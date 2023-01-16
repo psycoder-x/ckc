@@ -133,10 +133,10 @@ void arewind(Args *args) {
 }
 
 const Arg *aget(Args *args) {
-  if (args == NULL) {
+  if (aeos(args)) {
     return NULL;
   }
-  if (aeos(args)) {
+  if (args->data == NULL) {
     return NULL;
   }
   const Arg *a = &args->data[args->pos];
@@ -156,18 +156,13 @@ void aseek(Args *args, size_t offset, bool from_end) {
     return;
   }
   offset = (offset > args->size) ? args->size : offset;
-  if (!from_end) {
-    args->pos = offset;
-  } else {
-    args->pos = args->size - offset;
-  }
+  args->pos = (!from_end) ? offset : args->size - offset;
 }
 
 void aclose(Args *args) {
-  if (args == NULL) {
-    return;
+  if (args != NULL) {
+    free(args->data);
   }
-  free(args->data);
   free(args);
 }
 
@@ -175,7 +170,7 @@ bool aeos(Args *args) {
   if (args == NULL) {
     return true;
   }
-  return args->pos == args->size;
+  return args->pos >= args->size;
 }
 
 bool aerror(Args *args) {
