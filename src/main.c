@@ -78,12 +78,14 @@ void print_help(size_t optc, const Opt *optv) {
       fputc_n_times(' ', stdout, SHORT_OPT_LEN);
     }
     fputc_n_times(' ', stdout, GAP_LEN);
-    // FIXME: name may exceed the max length, which makes "mega-loop"
-    size_t tab_size;
+    size_t tab_size = 0;
     if (!sv_mty(optv[i].name)) {
       fputc_n_times('-', stdout, LONG_OPT_PREFIX_LEN);
-      fwrite(optv[i].name.data, sv_len(optv[i].name), 1, stdout);
-      tab_size = MAX_OPT_NAME_LEN - sv_len(optv[i].name);
+      size_t nlen = sv_len(optv[i].name);
+      fwrite(optv[i].name.data, nlen, 1, stdout);
+      if (nlen < MAX_OPT_NAME_LEN) {
+        tab_size = MAX_OPT_NAME_LEN - nlen;
+      }
     } else {
       tab_size = LONG_OPT_PREFIX_LEN + MAX_OPT_NAME_LEN;
     }
