@@ -12,7 +12,8 @@ BIN = bin
 OBJ_LIST = \
 	${OBJ}/main.o \
 	${OBJ}/strview.o \
-	${OBJ}/argstream.o 
+	${OBJ}/argstream.o \
+	${OBJ}/extraio.o
 
 EXEC = ${BIN}/ckc
 

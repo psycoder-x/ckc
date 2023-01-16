@@ -5,6 +5,7 @@
 #include<stdio.h>
 #include<ctype.h>
 #include"./argstream.h"
+#include"./extraio.h"
 
 /* Spaces between any "information unit" */
 #define GAP_LEN (2)
@@ -15,8 +16,6 @@
 /* Maximum length of the option name */
 #define MAX_OPT_NAME_LEN (16)
 
-/* Print the character c to file f, n times */
-static void fputc_n_times(char c, FILE *f, size_t n);
 /* Print alpha then name then info for each option */
 static void print_help(size_t optc, const Opt *optv);
 /* Print information about the name, version, origin, and legal status
@@ -58,50 +57,41 @@ int main(int argc, char **argv) {
   return 0;
 }
 
-void fputc_n_times(char c, FILE *f, size_t n) {
-  for (size_t i = 0; i < n; i++) {
-    fputc(c, f);
-  }
-}
-
 void print_help(size_t optc, const Opt *optv) {
-  static const char *message = 
+  static const Sv message = SV_SZ(
     "Usage: ckc [options] file...\n"
-    "Options:\n";
-  printf("%s", message);
+    "Options:\n"
+  );
+  fputsv(message, stdout);
   for (size_t i = 0; i < optc; i++) {
-    fputc_n_times(' ', stdout, GAP_LEN);
+    fputc_x(' ', stdout, GAP_LEN);
     if (isgraph(optv[i].alpha)) {
       putchar('-');
       putchar(optv[i].alpha);
     } else {
-      fputc_n_times(' ', stdout, SHORT_OPT_LEN);
+      fputc_x(' ', stdout, SHORT_OPT_LEN);
     }
-    fputc_n_times(' ', stdout, GAP_LEN);
-    size_t tab_size = 0;
+    fputc_x(' ', stdout, GAP_LEN);
     if (!sv_mty(optv[i].name)) {
-      fputc_n_times('-', stdout, LONG_OPT_PREFIX_LEN);
-      size_t nlen = sv_len(optv[i].name);
-      fwrite(optv[i].name.data, nlen, 1, stdout);
-      if (nlen < MAX_OPT_NAME_LEN) {
-        tab_size = MAX_OPT_NAME_LEN - nlen;
-      }
+      fputc_x('-', stdout, LONG_OPT_PREFIX_LEN);
+      fputsv_la(optv[i].name, stdout, MAX_OPT_NAME_LEN);
     } else {
-      tab_size = LONG_OPT_PREFIX_LEN + MAX_OPT_NAME_LEN;
+      fputc_x(' ', stdout, LONG_OPT_PREFIX_LEN + MAX_OPT_NAME_LEN);
     }
-    fputc_n_times(' ', stdout, tab_size + GAP_LEN);
-    fwrite(optv[i].info.data, sv_len(optv[i].info), 1, stdout);
+    fputc_x(' ', stdout, GAP_LEN);
+    fputsv(optv[i].info, stdout);
     putchar('\n');
   }
 }
 
 void print_version() {
   // TODO: correct the message
-  static const char *message = 
+  static const Sv message = SV_SZ(
     "ckc 0.0.0\n"
     "Copyright (C) 2023 psycoder-x\n"
-    "License: MIT <https://spdx.org/licenses/MIT.html>\n";
-  printf("%s\n", message);
+    "License: MIT <https://spdx.org/licenses/MIT.html>\n"
+  );
+  fputsv(message, stdout);
 }
 
 bool handle_info_options(Args *a, size_t optc, const Opt *optv) {
