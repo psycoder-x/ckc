@@ -8,6 +8,7 @@
 #include"./argstream.h"
 #include"./extraio.h"
 #include"./preinit.h"
+#include"./init.h"
 
 int main(int argc, char **argv) {
   /* Available options */
@@ -29,19 +30,30 @@ int main(int argc, char **argv) {
   size_t optc = sizeof(optv) / sizeof(Opt);
   /* Preinit context */
   static PreinitCtx preinitx;
-
+  /* Init context */
+  static InitCtx initx;
   Args *a = aopen(argc, argv, optc, optv);
-
   preinit(&preinitx, a, optc, optv);
-
   if (preinitx.info_mode) {
     aclose(a);
     return EXIT_SUCCESS;
   }
-
-  // TODO: program initialization
-
+  init(&initx, a);
   aclose(a);
-
+  /* example */
+  printf("Input files:\n");
+  for (size_t i = 0; i < initx.input_filenames.size; i++) {
+    fputc_x(' ', stdout, 3);
+    fputsv(sva_at(initx.input_filenames, i), stdout);
+    putchar('\n');
+  }
+  printf("Output file:\n");
+  fputc_x(' ', stdout, 3);
+  fputsv(initx.output_filename, stdout);
+  putchar('\n');
+  /* example end */
+  // TODO: load input files to RAM
+  // TODO: preprocessor
+  init_free(&initx);
   return EXIT_SUCCESS;
 }

@@ -14,6 +14,7 @@
 //****************************************************************
 // Dependencies
 
+#include<stdlib.h>
 #include<string.h>
 #include<stdbool.h>
 #include<limits.h>
@@ -30,12 +31,32 @@ typedef struct Sv {
   size_t size;
 } Sv;
 
+/* String view array */
+typedef struct Sva {
+  /* Number of elements */
+  size_t size;
+  /* Maybe non-free, array of string views */
+  Sv *data;
+} Sva;
+
 //****************************************************************
 // Functions and function-macros
 
 /* A null-terminated string to Sv (static) */
 #define SV_SZ(SZ) { .data = SZ, .size = sizeof(SZ) - 1 }
 
+/* Create a string view array and allocate memory for n elements */
+Sva      sva_alc  (size_t n);
+/* Free the memory used by string view array. Return empty array */
+Sva      sva_free (Sva a);
+/* Construct a string view array */
+Sva      sva_con  (size_t n, Sv *a);
+/* String view at index */
+Sv       sva_at   (Sva a, size_t i);
+/* Set string view at index */
+void     sva_set  (Sva a, size_t i, Sv s);
+/* Check if the array has errors */
+bool     sva_err  (Sva a);
 /* An array to Sv */
 Sv       sv_arr   (const char *a, size_t n);
 /* A null-terminated string to Sv */

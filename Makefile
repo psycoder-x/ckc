@@ -14,7 +14,8 @@ OBJ_LIST = \
 	${OBJ}/strview.o \
 	${OBJ}/argstream.o \
 	${OBJ}/extraio.o \
-	${OBJ}/preinit.o
+	${OBJ}/preinit.o \
+	${OBJ}/init.o
 
 EXEC = ${BIN}/ckc
 

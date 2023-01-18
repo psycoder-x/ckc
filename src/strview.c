@@ -10,6 +10,47 @@
 //****************************************************************
 // Functions and function-macros
 
+Sva sva_alc(size_t n) {
+  if (n == 0) {
+    return sva_con(0, NULL);
+  }
+  Sva a = sva_con(n, malloc(a.size * sizeof(Sv)));
+  if (a.data == NULL) {
+    return a;
+  }
+  for (size_t i = 0; i < a.size; i++) {
+    a.data[i] = SV_NULL;
+  }
+  return a;
+}
+
+Sva sva_free(Sva a) {
+  free(a.data);
+  return sva_con(0, NULL);
+}
+
+Sva sva_con(size_t n, Sv *a) {
+  return (Sva) { .size = n, .data = a };
+}
+
+Sv sva_at(Sva a, size_t i) {
+  if (sva_err(a) || i >= a.size) {
+    return SV_NULL;
+  }
+  return a.data[i];
+}
+
+void sva_set(Sva a, size_t i, Sv s) {
+  if (sva_err(a) || i >= a.size) {
+    return;
+  }
+  a.data[i] = s;
+}
+
+bool sva_err(Sva a) {
+  return a.data == NULL;
+}
+
 Sv sv_arr(const char *a, size_t n) {
   return (Sv) { .data = a, .size = n };
 }
