@@ -10,12 +10,8 @@ OBJ = obj
 BIN = bin
 
 OBJ_LIST = \
-	${OBJ}/main.o \
-	${OBJ}/strview.o \
-	${OBJ}/argstream.o \
-	${OBJ}/extraio.o \
-	${OBJ}/preinit.o \
-	${OBJ}/init.o
+	${OBJ}/ckc.o \
+	${OBJ}/token.o
 
 EXEC = ${BIN}/ckc
 
