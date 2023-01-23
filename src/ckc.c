@@ -4,6 +4,8 @@
 #include"stdbool.h"
 #include"string.h"
 
+State state;
+
 static void exit_event();
 
 static const char version[] =
@@ -21,8 +23,6 @@ static const char help[] =
   "  -p                 Preprocessor only\n"
   "  -v --version       Display compiler version information\n"
   ;
-
-State state;
 
 int main(int argc, char **argv) {
   if (atexit(exit_event)) {
@@ -105,9 +105,27 @@ int main(int argc, char **argv) {
   /*
    * file by file
    */
+  state.toks = emalloc(sizeof(tokens));
   for (int i = 0; i < state.ifiles_n; i++) {
-    /* for example print path */
-    printf("%s\n", state.ifiles[i]);
+    /* for example print path and tokens */
+    const char *filename = state.ifiles[i];
+    printf("FILE: %s\n", filename);
+    FILE *f = fopen(filename, "rb");
+    if (f == NULL || ferror(f)) {
+      lerror(0, "cannot open the file", filename, -1, -1);
+    }
+    tok_begin(state.toks, f, filename);
+    /* token by token */
+    token_type t;
+    tokens *ts = state.toks;
+    do {
+      t = tok_get(state.toks);
+      const char *ttag = token_type_strings[t];
+      printf("%i:%i\t%s\t\"%s\"\n", ts->line, ts->col, ttag, ts->tval);
+    }
+    while (t != TOKEN_END_OF_STREAM);
+
+    fclose(f);
   }
   exit(0);
 }
@@ -115,6 +133,7 @@ int main(int argc, char **argv) {
 void exit_event() {
   free(state.idirs);
   free(state.ifiles);
+  free(state.toks);
 }
 
 void gerror(char warn, const char *msg) {
@@ -125,9 +144,9 @@ void gerror(char warn, const char *msg) {
   }
 }
 
-void lerror(char warn, const char *msg, const char *file, int line) {
+void lerror(char warn, const char *msg, const char *f, int l, int c) {
   const char *type = warn ? "warning" : "error";
-  fprintf(stderr, "%s:%i: %s: %s\n", file, line, type, msg);
+  fprintf(stderr, "%s:%i:%i: %s: %s\n", f, l, c, type, msg);
   if (!warn) {
     exit(1);
   }

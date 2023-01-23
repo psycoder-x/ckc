@@ -1,6 +1,7 @@
 #ifndef CKC_H
 #define CKC_H
 
+#include"token.h"
 #include"stdio.h"
 
 #define VERSION "v0.0.0"
@@ -22,12 +23,16 @@ struct State {
   /* input files */
   char **ifiles;
   int ifiles_n;
+  /* tokens */
+  tokens *toks;
 };
+
+extern State state;
 
 /* global error */
 void gerror(char warn, const char *msg);
-/* local error */
-void lerror(char warn, const char *msg, const char *file, int line);
+/* local error (f - file, l - line, c - column) */
+void lerror(char warn, const char *msg, const char *f, int l, int c);
 /* malloc that checks for errors */
 void *emalloc(size_t bytes);
 /* calloc that checks for errors */
