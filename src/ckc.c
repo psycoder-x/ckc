@@ -1,4 +1,6 @@
 #include"ckc.h"
+#include"ckclib.h"
+#include"lexer.h"
 #include"stdio.h"
 #include"stdlib.h"
 #include"stdbool.h"
@@ -26,7 +28,7 @@ static const char help[] =
 
 int main(int argc, char **argv) {
   if (atexit(exit_event)) {
-    gerror(0, "atexit() is not supported");
+    gerr("atexit() is not supported");
   }
   state.args = argv;
   state.args_n = argc;
@@ -71,13 +73,13 @@ int main(int argc, char **argv) {
     }
   }
   if (state.ifiles_n == 0) {
-    gerror(0, "no input files");
+    gerr("no input files");
   }
   /*
    * options
    */
-  state.ifiles = ecalloc(state.ifiles_n, sizeof(char *));
-  state.idirs = ecalloc(state.idirs_n, sizeof(char *));
+  state.ifiles = scalloc(state.ifiles_n, sizeof(char *));
+  state.idirs = scalloc(state.idirs_n, sizeof(char *));
   int ifile_i = 0;
   int idir_i = 0;
   for (int i = 1; i < state.args_n; i++) {
@@ -105,27 +107,23 @@ int main(int argc, char **argv) {
   /*
    * file by file
    */
-  state.toks = emalloc(sizeof(tokens));
-  for (int i = 0; i < state.ifiles_n; i++) {
+  for (size_t i = 0; i < state.ifiles_n; i++) {
     /* for example print path and tokens */
     const char *filename = state.ifiles[i];
     printf("FILE: %s\n", filename);
-    FILE *f = fopen(filename, "rb");
-    if (f == NULL || ferror(f)) {
-      lerror(0, "cannot open the file", filename, -1, -1);
-    }
-    tok_begin(state.toks, f, filename);
+    file_data file = file_read_by_name(filename);
+    token_list tl = lex_file(file);
+    token_view tv = tl_view(tl);
+    size_t len = tv_len(tv);
     /* token by token */
-    token_type t;
-    tokens *ts = state.toks;
-    do {
-      t = tok_get(state.toks);
-      const char *ttag = token_type_strings[t];
-      printf("%i:%i\t%s\t\"%s\"\n", ts->line, ts->col, ttag, ts->tval);
+    for (size_t i = 0; i < len; i++) {
+      token tok = tv_get(tv, i);
+      const char *fmt = "%i:%i\t%s\t%s\n";
+      const char *ttag = token_type_strings[tok.type];
+      printf(fmt, tok.loc.line, tok.loc.column, ttag, tok.string);
     }
-    while (t != TOKEN_END_OF_STREAM);
-
-    fclose(f);
+    tl_del(tl);
+    file_del(file);
   }
   exit(0);
 }
@@ -133,45 +131,4 @@ int main(int argc, char **argv) {
 void exit_event() {
   free(state.idirs);
   free(state.ifiles);
-  free(state.toks);
-}
-
-void gerror(char warn, const char *msg) {
-  const char *type = warn ? "warning" : "error";
-  fprintf(stderr, "%s: %s\n", type, msg);
-  if (!warn) {
-    exit(1);
-  }
-}
-
-void lerror(char warn, const char *msg, const char *f, int l, int c) {
-  const char *type = warn ? "warning" : "error";
-  fprintf(stderr, "%s:%i:%i: %s: %s\n", f, l, c, type, msg);
-  if (!warn) {
-    exit(1);
-  }
-}
-
-void *emalloc(size_t bytes) {
-  void *new_ptr = malloc(bytes);
-  if (new_ptr == NULL) {
-    gerror(0, "fail to allocate memory");
-  }
-  return new_ptr;
-}
-
-void *ecalloc(size_t num, size_t size) {
-  void *new_ptr = calloc(num, size);
-  if (new_ptr == NULL) {
-    gerror(0, "fail to allocate memory");
-  }
-  return new_ptr;
-}
-
-void *erealloc(void *ptr, size_t bytes) {
-  void *new_ptr = realloc(ptr, bytes);
-  if (new_ptr == NULL) {
-    gerror(0, "fail to reallocate memory");
-  }
-  return new_ptr;
 }
