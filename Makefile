@@ -10,11 +10,8 @@ OBJ = obj
 BIN = bin
 
 OBJ_LIST = \
-	${OBJ}/ckc.o \
-	${OBJ}/token.o \
-	${OBJ}/ckclib.o \
-	${OBJ}/file.o \
-	${OBJ}/lexer.o
+	${OBJ}/main.o \
+	${OBJ}/str.o
 
 EXEC = ${BIN}/ckc
 
