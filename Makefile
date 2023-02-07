@@ -11,7 +11,8 @@ BIN = bin
 
 OBJ_LIST = \
 	${OBJ}/main.o \
-	${OBJ}/str.o
+	${OBJ}/str.o \
+	${OBJ}/ckc.o
 
 EXEC = ${BIN}/ckc
 
