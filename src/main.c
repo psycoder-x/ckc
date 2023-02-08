@@ -30,8 +30,10 @@ int main(int argc, char **argv) {
   fputc('\n', stdout);
   fprintf(stdout, "%s\n", "  ifiles:");
   print_cvv(cvv_cva(ckc.ifiles), stdout);
-  fprintf(stdout, "%s\n", "  idirs:");
-  print_cvv(cvv_cva(ckc.idirs), stdout);
+  if (ckc.idirs.size != 0) {
+    fprintf(stdout, "%s\n", "  idirs:");
+    print_cvv(cvv_cva(ckc.idirs), stdout);
+  }
   /* end test */
   ckc_delete(ckc);
   return 0;

@@ -93,8 +93,8 @@ CharVA cva_new(size_t size) {
   array.at = calloc(size, sizeof(CharV));
   if (array.at == NULL) {
     array.valid = 0;
-    fprintf(stderr, "%s%s\n", __func__,
-      ": error: fail to allocate memory");
+    fprintf(stderr, "%s%s\n",
+      __func__, ": error: fail to allocate memory");
   }
   return array;
 }
