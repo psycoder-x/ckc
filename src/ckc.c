@@ -5,58 +5,62 @@
 
 #define CKC_VERSION "v0.0.0"
 
-typedef enum ArgType {
-  ARG_VERSION,
-  ARG_HELP,
-  ARG_PP_ONLY,
-  ARG_COM_ONLY,
-  ARG_OUTPUT_FILE,
-  ARG_INPUT_DIRECTORY,
-  ARG_INPUT_FILE,
-  ARG_UNKNOWN,
-} ArgType;
+typedef enum ArgumentType {
+  A_VERSION,
+  A_HELP,
+  A_PP_ONLY,
+  A_COM_ONLY,
+  A_OUT_FILE,
+  A_INPUT_DIR,
+  A_INPUT_FILE,
+  A_COUNT
+} ArgumentType;
 
-typedef struct Option {
-  bool prm;
-  /* requires a parameter */
+typedef struct Argument {
+  ArgumentType type;
+  /* meaning of the argument */
 
-  CharV lng;
-  /* long name */
+  CharV patern;
+  /* possible sequence of characters */
 
-  char shrt;
-  /* single character name */
-} Option;
+  bool param;
+  /* the argument does require a parameter */
+} Argument;
 
-typedef bool(*ArgHandler)(void *ctx, ArgType type, CharV value);
-
-static bool argument(
-  CharVV args, /* read access to all arguments */
-  size_t *i, /* index to the next argument */
-  ArgHandler func, /* function with context */
-  void *ctx /* context for the function */
+typedef void(*ArgumentHandler)(
+  Ckc *ckc,
+  ArgumentType type,
+  CharV param
 );
 
-static bool long_option(
-  CharVV args, /* read access to all arguments */
-  size_t *i, /* index to the next argument */
-  ArgHandler func, /* function with context */
-  void *ctx, /* context for the function */
-  CharV opt
+static void foreach_argument(
+  Ckc *ckc,
+  CharVV args,
+  ArgumentHandler func
 );
 
-static CharV req_param(
-  CharVV args, /* read access to all arguments */
-  size_t *i, /* index to the current argument */
-  CharV param_mb /* characters after option */
+static void count_arg(
+  Ckc *ckc,
+  ArgumentType type,
+  CharV param
 );
 
-static CharV get_next(
-  CharVV args, /* read access to all arguments */
-  size_t *i /* index to the next argument */
+static void save_arg(
+  Ckc *ckc,
+  ArgumentType type,
+  CharV param
 );
 
-static bool count_arg(void *ctx, ArgType type, CharV value);
-static bool save_arg(void *ctx, ArgType type, CharV value);
+static const Argument *match_argument(
+  CharV string,
+  CharV *endout
+);
+
+static bool match_patern(
+  CharV string,
+  CharV patern,
+  CharV *endout
+);
 
 static const char version[] =
   "CK Compiler "CKC_VERSION"\n"
@@ -66,24 +70,29 @@ static const char version[] =
 
 static const char help[] =
   "Usage: ckc [options...] [-o outfile] [-c|-p] file(s)...\n"
-  "  -c --conly         Compile only; do not assemble or link\n"
+  "  -c                 Compile only; do not assemble or link\n"
   "  -h --help          Display this information\n"
   "  -i --include <dir> Add include path <dir>\n"
   "  -o --output <file> Place the output into <file>\n"
-  "  -p --ponly         Preprocessor only\n"
+  "  -p                 Preprocessor only\n"
   "  -v --version       Display compiler version information\n"
   ;
 
-static const Option options[] = {
-  { .prm = 0, .shrt = 'v', .lng = CV_NTS("version") },
-  { .prm = 0, .shrt = 'h', .lng = CV_NTS("help") },
-  { .prm = 0, .shrt = 'p', .lng = CV_NTS("ponly") },
-  { .prm = 0, .shrt = 'c', .lng = CV_NTS("conly") },
-  { .prm = 1, .shrt = 'o', .lng = CV_NTS("output") },
-  { .prm = 1, .shrt = 'i', .lng = CV_NTS("include") },
+static const Argument arguments[] = {
+  { .type = A_INPUT_DIR,  .patern = CV_NTS("--include"), .param = 1 },
+  { .type = A_VERSION,    .patern = CV_NTS("--version"), .param = 0 },
+  { .type = A_OUT_FILE,   .patern = CV_NTS("--output"),  .param = 1 },
+  { .type = A_HELP,       .patern = CV_NTS("--help"),    .param = 0 },
+  { .type = A_INPUT_DIR,  .patern = CV_NTS("-i*"),       .param = 1 },
+  { .type = A_OUT_FILE,   .patern = CV_NTS("-o*"),       .param = 1 },
+  { .type = A_COM_ONLY,   .patern = CV_NTS("-c"),        .param = 0 },
+  { .type = A_HELP,       .patern = CV_NTS("-h"),        .param = 0 },
+  { .type = A_PP_ONLY,    .patern = CV_NTS("-p"),        .param = 0 },
+  { .type = A_VERSION,    .patern = CV_NTS("-v"),        .param = 0 },
+  { .type = A_INPUT_FILE, .patern = CV_NTS("*"),         .param = 1 },
 };
 
-static const size_t options_size = sizeof(options)/sizeof(options[0]);
+#define ARGUMENTS_SIZE (sizeof(arguments)/sizeof(arguments[0]))
 
 Ckc ckc_new_args(CharVV args) {
   Ckc ckc = {
@@ -96,12 +105,7 @@ Ckc ckc_new_args(CharVV args) {
     .ifiles = cva_new(0),
     .idirs = cva_new(0)
   };
-  for (size_t i = 0; i < args.size;) {
-    if (!argument(args, &i, count_arg, &ckc)) {
-      ckc.valid = 0;
-      return ckc;
-    }
-  }
+  foreach_argument(&ckc, args, count_arg);
   ckc.ifiles = cva_new(ckc.ifiles.size);
   ckc.idirs = cva_new(ckc.idirs.size);
   if (!ckc.idirs.valid || !ckc.ifiles.valid) {
@@ -112,12 +116,7 @@ Ckc ckc_new_args(CharVV args) {
   }
   ckc.ifiles.size = 0;
   ckc.idirs.size = 0;
-  for (size_t i = 0; i < args.size;) {
-    if (!argument(args, &i, save_arg, &ckc)) {
-      ckc.valid = 0;
-      return ckc;
-    }
-  }
+  foreach_argument(&ckc, args, save_arg);
   return ckc;
 }
 
@@ -137,113 +136,61 @@ CharV ckc_version() {
   return cv_mk(sizeof(version), version);
 }
 
-bool argument(CharVV args, size_t *i, ArgHandler func, void *ctx) {
-  CharV base = get_next(args, i);
-  if (base.size == 0) {
-    // fprintf(stderr, "%s\n", "the empty argument");
-    return true;
-  }
-  if (base.at[0] != '-') {
-    func(ctx, ARG_INPUT_FILE, base);
-    return true;
-  }
-  if (base.size == 1) {
-    fprintf(stderr, "%s\n", "the empty option \'-\'");
-    return false;
-  }
-  CharV option = cv_cut(base, 1);
-  CharV end = cv_cut(option, 1);
-  switch (option.at[0]) {
-  case '-':
-    return long_option(args, i, func, ctx, end);
-  case 'c':
-    return func(ctx, ARG_COM_ONLY, end);
-  case 'h':
-    return func(ctx, ARG_HELP, end);
-  case 'i':
-    return func(ctx, ARG_INPUT_DIRECTORY, req_param(args, i, end));
-  case 'o':
-    return func(ctx, ARG_OUTPUT_FILE, req_param(args, i, end));
-  case 'p':
-    return func(ctx, ARG_PP_ONLY, end);
-  case 'v':
-    return func(ctx, ARG_VERSION, end);
-  default:
-    return func(ctx, ARG_INPUT_FILE, base);
-  }
-  return true;
-}
-
-bool long_option(
-  CharVV args, size_t *i, ArgHandler func, void *ctx, CharV opt
-) {
-  size_t oi = 0;
-  for (; oi < options_size; oi++) {
-    if (cv_eq(opt, options[oi].lng)) {
-      break;
+void foreach_argument(Ckc *ckc, CharVV args, ArgumentHandler func) {
+  CharV param;
+  for (size_t i = 1; i < args.size; i++) {
+    const Argument *arg = match_argument(args.at[i], &param);
+    if (arg->param && param.size == 0) {
+      if (++i < args.size) {
+        param = args.at[i];
+      }
     }
-  }
-  if (oi >= options_size) {
-    fprintf(stderr, "%s", "error: ");
-    cv_write(opt, stderr);
-    fprintf(stderr, "%s\n", ": unknown option");
-    return false;
-  }
-  if (options[oi].prm) {
-    return func(ctx, oi, get_next(args, i));
-  }
-  else {
-    return func(ctx, oi, opt);
+    func(ckc, arg->type, param);
   }
 }
 
-CharV req_param(CharVV args, size_t *i, CharV param_mb) {
-  if (param_mb.size == 0) {
-    return get_next(args, i);
-  }
-  return param_mb;
-}
-
-CharV get_next(CharVV args, size_t *i) {
-  ++*i;
-  if (*i >= args.size) {
-    return cv_mk(0, "");
-  }
-  return args.at[*i];
-}
-
-bool count_arg(void *ctx, ArgType type, CharV value) {
-  Ckc *ckc = ctx;
+void count_arg(Ckc *ckc, ArgumentType type, CharV param) {
   switch (type) {
-  case ARG_HELP: ckc->help = 1; break;
-  case ARG_VERSION: ckc->version = 1; break;
-  case ARG_PP_ONLY: ckc->pp_only = 1; break;
-  case ARG_COM_ONLY: ckc->com_only = 1; break;
-  case ARG_OUTPUT_FILE: ckc->ofile = value; break;
-  case ARG_INPUT_DIRECTORY: ckc->idirs.size++; break;
-  case ARG_INPUT_FILE: ckc->ifiles.size++; break;
-  default:
-    fprintf(stderr, "%s%i%s\n",
-      "error: ", type, ": unknown option type");
-    return false;
+  case A_HELP:       ckc->help = 1;      break;
+  case A_VERSION:    ckc->version = 1;   break;
+  case A_PP_ONLY:    ckc->pp_only = 1;   break;
+  case A_COM_ONLY:   ckc->com_only = 1;  break;
+  case A_OUT_FILE:   ckc->ofile = param; break;
+  case A_INPUT_DIR:  ckc->idirs.size++;  break;
+  case A_INPUT_FILE: ckc->ifiles.size++; break;
+  default: break;
   }
-  return true;
 }
 
-bool save_arg(void *ctx, ArgType type, CharV value) {
-  Ckc *ckc = ctx;
+void save_arg(Ckc *ckc, ArgumentType type, CharV param) {
   switch (type) {
-  case ARG_INPUT_DIRECTORY:
-    ckc->idirs.at[ckc->idirs.size] = value;
+  case A_INPUT_DIR:
+    ckc->idirs.at[ckc->idirs.size] = param;
     ckc->idirs.size++;
     break;
-  case ARG_INPUT_FILE:
-    ckc->ifiles.at[ckc->ifiles.size] = value;
+  case A_INPUT_FILE:
+    ckc->ifiles.at[ckc->ifiles.size] = param;
     ckc->ifiles.size++;
     break;
-  default:
-    /* errors only in the count_arg */
-    return true;
+  default: break;
   }
-  return true;
+}
+
+const Argument *match_argument(CharV string, CharV *endout) {
+  for (size_t i = 0; i < ARGUMENTS_SIZE; i++) {
+    if (match_patern(string, arguments[i].patern, endout)) {
+      return &arguments[i];
+    }
+  }
+  return &arguments[ARGUMENTS_SIZE - 1]; /* input file? */
+}
+
+bool match_patern(CharV string, CharV patern, CharV *endout) {
+  if (patern.at[patern.size - 1] != '*') {
+    *endout = (CharV) CV_NTS("");
+    return cv_eq(string, patern);
+  }
+  CharV solid_patern = cv_rcut(patern, 1);
+  *endout = cv_cut(string, solid_patern.size);
+  return cv_eq(cv_get(string, solid_patern.size), solid_patern);
 }

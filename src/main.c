@@ -21,11 +21,10 @@ int main(int argc, char **argv) {
     return 1;
   }
   /* test */
-  const char *sbool[2] = { "false", "true" };
-  fprintf(stdout, "%s\n%s\n", "  help:", sbool[ckc.help]);
-  fprintf(stdout, "%s\n%s\n", "  version:", sbool[ckc.version]);
-  fprintf(stdout, "%s\n%s\n", "  pp_only:", sbool[ckc.pp_only]);
-  fprintf(stdout, "%s\n%s\n", "  com_only:", sbool[ckc.com_only]);
+  if (ckc.help) fprintf(stdout, "%s\n", "help");
+  if (ckc.version) fprintf(stdout, "%s\n", "version");
+  if (ckc.pp_only) fprintf(stdout, "%s\n", "pp_only");
+  if (ckc.com_only) fprintf(stdout, "%s\n", "com_only");
   fprintf(stdout, "%s\n", "  ofile:");
   cv_write(ckc.ofile, stdout);
   fputc('\n', stdout);

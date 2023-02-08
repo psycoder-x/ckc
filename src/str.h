@@ -61,8 +61,22 @@ CharV cv_cut(
   CharV string, /* char view to be cutted */
   size_t count /* number of characters to remove */
 );
-/* removes first <count> characters from <string>.
-if <count> is greater than <string.size>, returns the empty char view */
+/* removes the first <count> characters from <string>.
+if <count> is greater than <string.size>, returns the empty CharV */
+
+CharV cv_rcut(
+  CharV string, /* char view to be cutted */
+  size_t count /* number of characters to remove */
+);
+/* removes the last <count> characters from <string>.
+if <count> is greater than <string.size>, returns the empty CharV */
+
+CharV cv_get(
+  CharV string, /* char view to be cutted */
+  size_t count /* number of resulting characters */
+);
+/* returns the first <count> characters from <string>.
+if <count> is greater than <string.size>, returns <string> */
 
 bool cv_eq(
   CharV string, /* char view */

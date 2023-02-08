@@ -36,6 +36,20 @@ CharV cv_cut(CharV string, size_t count) {
   return cv_mk(string.size - count, string.at + count);
 }
 
+CharV cv_rcut(CharV string, size_t count) {
+  if (count > string.size) {
+    return cv_mk(0, string.at);
+  }
+  return cv_mk(string.size - count, string.at);
+}
+
+CharV cv_get(CharV string, size_t count) {
+  if (count > string.size) {
+    return string;
+  }
+  return cv_mk(count, string.at);
+}
+
 bool cv_eq(CharV string, CharV another) {
   if (string.size != another.size) {
     return false;
