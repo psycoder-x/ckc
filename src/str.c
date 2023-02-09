@@ -6,6 +6,17 @@
 #include "stdlib.h"
 /* included for memory allocation */
 
+#define UNIQ restrict
+
+void mem_copy(char *UNIQ dst, const char *UNIQ src, size_t count) {
+  while (count != 0) {
+    *dst = *src;
+    dst++;
+    src++;
+    count--;
+  }
+}
+
 size_t nts_chr(const char *string, char character) {
   const char *begin = string;
   while (*string != '\0' && *string != character) {
@@ -62,8 +73,58 @@ bool cv_eq(CharV string, CharV another) {
   return true;
 }
 
+const char *cv_rchr(CharV string, char character) {
+  for (size_t i = 0, j = string.size - 1; i < string.size; i++, j--) {
+    if (string.at[j] == character) {
+      return &string.at[j];
+    }
+  }
+  return NULL;
+}
+
 size_t cv_write(CharV string, FILE *stream) {
   return fwrite(string.at, sizeof(char), string.size, stream);
+}
+
+CharA ca_new(size_t size) {
+  CharA array = (CharA) {
+    .valid = 1,
+    .size = size,
+    .at = NULL
+  };
+  if (size == 0) {
+    /* the empty array is valid */
+    return array;
+  }
+  array.at = calloc(size, sizeof(char));
+  if (array.at == NULL) {
+    array.valid = 0;
+    fprintf(stderr, "%s%s\n",
+      __func__, ": error: fail to allocate memory");
+  }
+  return array;
+}
+
+CharA ca_new_cat(CharV string1, CharV string2) {
+  CharA cat = ca_new(string1.size + string2.size + 1);
+  if (!cat.valid) {
+    return cat;
+  }
+  cat.size--;
+  cat.at[cat.size] = '\0';
+  mem_copy(cat.at, string1.at, string1.size);
+  mem_copy(cat.at + string1.size, string2.at, string2.size);
+  return cat;
+}
+
+CharV ca_view(CharA array) {
+  return cv_mk(array.size, array.at);
+}
+
+void ca_delete(CharA array) {
+  if (array.valid) {
+    free(array.at);
+  }
 }
 
 CharVV cvv_mk(size_t size, const CharV *pointer) {
@@ -100,8 +161,7 @@ CharVA cva_new(size_t size) {
 }
 
 void cva_delete(CharVA array) {
-  if (!array.valid) {
-    return;
+  if (array.valid) {
+    free(array.at);
   }
-  free(array.at);
 }

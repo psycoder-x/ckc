@@ -23,6 +23,14 @@ typedef struct CharV {
 } CharV;
 /* view of chars */
 
+typedef struct CharA {
+  bool valid;
+  /* if false, an error was printed and you need to exit */
+  size_t size;
+  char *at;
+} CharA;
+/* array of chars */
+
 typedef struct CharVV {
   size_t size;
   const CharV *at;
@@ -30,11 +38,19 @@ typedef struct CharVV {
 /* view of view of chars */
 
 typedef struct CharVA {
-  bool valid; /* if false, an error was printed and you need to exit */
+  bool valid;
+  /* if false, an error was printed and you need to exit */
   size_t size;
   CharV *at;
 } CharVA;
 /* array of view of chars */
+
+void mem_copy(
+  char *dst,
+  const char *src,
+  size_t count
+);
+/* copies <count> characters from <src> to <dst> */
 
 size_t nts_chr(
   const char *string, /* null-terminated string */
@@ -84,12 +100,42 @@ bool cv_eq(
 );
 /* returns true if two strings are equal */
 
+const char *cv_rchr(
+  CharV string,
+  char character
+);
+/* the last occurrence of <character> in <string> */
+
 size_t cv_write(
   CharV string, /* char view */
   FILE *stream /* stream with write access */
 );
 /* writes characters from <string> to <stream>.
 returns the number of characters written successfully */
+
+CharA ca_new(
+  size_t size /* number of characters to allocate */
+);
+/* returns an array of characters,
+not allocates memory when <size> is 0 */
+
+CharA ca_new_cat(
+  CharV string1,
+  CharV string2
+);
+/* returns the result of concatenating two strings,
+adds the null-character in the end to make it nts-compatible,
+however <.size> it is sum of <string1.size> and <string2.size> */
+
+CharV ca_view(
+  CharA array
+);
+/* returns a view of the array */
+
+void ca_delete(
+  CharA array /* an array returned from a "new" function */
+);
+/* frees the memory used by <array> */
 
 CharVV cvv_mk(
   size_t size, /* number of char views */
@@ -103,7 +149,7 @@ CharVV cvv_cva(
 /* returns a view of the array of char views */
 
 CharVA cva_new(
-  size_t size /* number of characters to allocate */
+  size_t size /* number of char views to allocate */
 );
 /* returns an array of char views,
 not allocates memory when <size> is 0 */

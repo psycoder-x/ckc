@@ -1,13 +1,13 @@
 #ifndef CKC_H
 #define CKC_H
 
+#include "str.h"
+
 #include "stddef.h"
 /* included for size_t */
 
 #include "stdbool.h"
 /* included for bool */
-
-#include "str.h"
 
 typedef struct Ckc {
   bool valid;
@@ -54,4 +54,4 @@ CharV ckc_help();
 CharV ckc_version();
 /* returns a char view of the version information */
 
-#endif /* CKC_H */
+#endif /* !CKC_H */
