@@ -1,6 +1,7 @@
 #include "ckc.h"
 #include "str.h"
 #include "file.h"
+#include "lex.h"
 #include "stdio.h"
 
 int main(int argc, char **argv) {
@@ -32,15 +33,20 @@ int main(int argc, char **argv) {
       ckc_delete(ckc);
       return 1;
     }
-    fprintf(stdout, "%s", "path: ");
+    fprintf(stdout, "%s", "file: ");
     cv_write(ca_view(fd.path), stdout);
-    fprintf(stdout, "\n%s", "path.name: ");
-    cv_write(fd.name, stdout);
-    fprintf(stdout, "\n%s", "path.dir: ");
-    cv_write(fd.dir, stdout);
-    fprintf(stdout, "\n%s\n", "content:");
-    cv_write(ca_view(fd.content), stdout);
-    fputc('\n', stdout);
+    fprintf(stdout, "\n%s\n", "tokens:");
+    TokenL tokens = tl_new_lex(&fd);
+    if (!tokens.valid) {
+      fd_delete(fd);
+      ckc_delete(ckc);
+      return 1;
+    }
+    for (size_t t = 0; t < tokens.size; t++) {
+      fprintf(stdout, "%2i | ", tokens.at[t].type);
+      cv_write(tokens.at[t].value, stdout);
+      fputc('\n', stdout);
+    }
     fd_delete(fd);
   }
   /* end test */

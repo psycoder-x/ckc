@@ -13,7 +13,8 @@ OBJ_LIST = \
 	${OBJ}/main.o \
 	${OBJ}/str.o \
 	${OBJ}/ckc.o \
-	${OBJ}/file.o
+	${OBJ}/file.o \
+	${OBJ}/lex.o
 
 EXEC = ${BIN}/ckc
 

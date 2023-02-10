@@ -73,6 +73,15 @@ bool cv_eq(CharV string, CharV another) {
   return true;
 }
 
+const char *cv_chr(CharV string, char character) {
+  for (size_t i = 0; i < string.size; i++) {
+    if (string.at[i] == character) {
+      return &string.at[i];
+    }
+  }
+  return NULL;
+}
+
 const char *cv_rchr(CharV string, char character) {
   for (size_t i = 0, j = string.size - 1; i < string.size; i++, j--) {
     if (string.at[j] == character) {
@@ -118,6 +127,9 @@ CharA ca_new_cat(CharV string1, CharV string2) {
 }
 
 CharV ca_view(CharA array) {
+  if (!array.valid) {
+    return cv_mk(0, NULL);
+  }
   return cv_mk(array.size, array.at);
 }
 

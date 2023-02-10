@@ -53,20 +53,25 @@ void mem_copy(
 /* copies <count> characters from <src> to <dst> */
 
 size_t nts_chr(
-  const char *string, /* null-terminated string */
-  char character /* character to be located */
+  const char *string,
+  /* null-terminated string */
+  char character
+  /* character to be located */
 );
 /* returns an index of the first occurrence of <character> in <string>.
 returns the length of <string> if <character> is not found */
 
 size_t nts_len(
-  const char *string /* null-terminated string */
+  const char *string
+  /* null-terminated string */
 );
 /* returns the length of <string> */
 
 CharV cv_mk(
-  size_t size, /* number of characters */
-  const char *pointer /* pointer to characters */
+  size_t size,
+  /* number of characters */
+  const char *pointer
+  /* pointer to characters */
 );
 /* returns a view of characters */
 
@@ -74,31 +79,45 @@ CharV cv_mk(
 /* (macro-function) returns a char view of null-terminated string */
 
 CharV cv_cut(
-  CharV string, /* char view to be cutted */
-  size_t count /* number of characters to remove */
+  CharV string,
+  /* char view to be cutted */
+  size_t count
+  /* number of characters to remove */
 );
 /* removes the first <count> characters from <string>.
 if <count> is greater than <string.size>, returns the empty CharV */
 
 CharV cv_rcut(
-  CharV string, /* char view to be cutted */
-  size_t count /* number of characters to remove */
+  CharV string,
+  /* char view to be cutted */
+  size_t count
+  /* number of characters to remove */
 );
 /* removes the last <count> characters from <string>.
 if <count> is greater than <string.size>, returns the empty CharV */
 
 CharV cv_get(
-  CharV string, /* char view to be cutted */
-  size_t count /* number of resulting characters */
+  CharV string,
+  /* char view to be cutted */
+  size_t count
+  /* number of resulting characters */
 );
 /* returns the first <count> characters from <string>.
 if <count> is greater than <string.size>, returns <string> */
 
 bool cv_eq(
-  CharV string, /* char view */
-  CharV another /* another char view */
+  CharV string,
+  /* char view */
+  CharV another
+  /* another char view */
 );
 /* returns true if two strings are equal */
+
+const char *cv_chr(
+  CharV string,
+  char character
+);
+/* the first occurrence of <character> in <string> */
 
 const char *cv_rchr(
   CharV string,
@@ -107,14 +126,17 @@ const char *cv_rchr(
 /* the last occurrence of <character> in <string> */
 
 size_t cv_write(
-  CharV string, /* char view */
-  FILE *stream /* stream with write access */
+  CharV string,
+  /* char view */
+  FILE *stream
+  /* stream with write access */
 );
 /* writes characters from <string> to <stream>.
 returns the number of characters written successfully */
 
 CharA ca_new(
-  size_t size /* number of characters to allocate */
+  size_t size
+  /* number of characters to allocate */
 );
 /* returns an array of characters,
 not allocates memory when <size> is 0 */
@@ -133,29 +155,35 @@ CharV ca_view(
 /* returns a view of the array */
 
 void ca_delete(
-  CharA array /* an array returned from a "new" function */
+  CharA array
+  /* an array returned from a "new" function */
 );
 /* frees the memory used by <array> */
 
 CharVV cvv_mk(
-  size_t size, /* number of char views */
-  const CharV *pointer /* pointer to char views */
+  size_t size,
+  /* number of char views */
+  const CharV *pointer
+  /* pointer to char views */
 );
 /* returns a view of char views */
 
 CharVV cvv_cva(
-  CharVA array /* array to view */
+  CharVA array
+  /* array to view */
 );
 /* returns a view of the array of char views */
 
 CharVA cva_new(
-  size_t size /* number of char views to allocate */
+  size_t size
+  /* number of char views to allocate */
 );
 /* returns an array of char views,
 not allocates memory when <size> is 0 */
 
 void cva_delete(
-  CharVA array /* an array returned from a "new" function */
+  CharVA array
+  /* an array returned from a "new" function */
 );
 /* frees the memory used by <array> */
 
