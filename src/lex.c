@@ -10,13 +10,6 @@ typedef struct Lexer {
   const char *limit;
 } Lexer;
 
-typedef struct Context {
-  size_t line;
-  size_t col;
-  const FileData *file;
-  CharV line_view;
-} Context;
-
 typedef struct Keyword {
   TokenType type;
   CharV string;
@@ -24,8 +17,6 @@ typedef struct Keyword {
 
 static const Keyword keywords[] = {
   { .string = CV_NTS("and"), .type = TT_AND },
-  { .string = CV_NTS("byte"), .type = TT_BYTE },
-  { .string = CV_NTS("char"), .type = TT_CHAR },
   { .string = CV_NTS("define"), .type = TT_DEFINE },
   { .string = CV_NTS("else"), .type = TT_ELSE },
   { .string = CV_NTS("end"), .type = TT_END },
@@ -37,8 +28,6 @@ static const Keyword keywords[] = {
   { .string = CV_NTS("or"), .type = TT_OR },
   { .string = CV_NTS("ptr"), .type = TT_PTR },
   { .string = CV_NTS("ret"), .type = TT_RET },
-  { .string = CV_NTS("void"), .type = TT_VOID },
-  { .string = CV_NTS("uint"), .type = TT_UINT },
   { .string = CV_NTS("undef"), .type = TT_UNDEF },
   { .string = CV_NTS("while"), .type = TT_WHILE },
 };
@@ -84,11 +73,6 @@ static bool skip_comment(
   Lexer *lex
 );
 
-static Context get_context(
-  const FileData *file,
-  const char *pointer
-);
-
 static Token get_alnum(
   Lexer *lex,
   TokenType type
@@ -97,16 +81,6 @@ static Token get_alnum(
 static Token get_quoted(
   Lexer *lex,
   TokenType type
-);
-
-static void ctx_write_position(
-  Context ctx,
-  FILE *stream
-);
-
-static void ctx_write_line_view(
-  Context ctx,
-  FILE *stream
 );
 
 Token tok_mk(TokenType type, CharV value, const FileData *file) {
@@ -288,11 +262,12 @@ Token get_token(Lexer *lex) {
     }
   }
   lex->valid = 0;
-  Context ctx = get_context(lex->file, lex->cur);
+  Token utoken = tok_mk(0, cv_mk(1, lex->cur), lex->file);
+  Context ctx = ctx_mk_token(utoken);
   ctx_write_position(ctx, stderr);
   fprintf(stderr, "%s\n", "error: unknown token");
   ctx_write_line_view(ctx, stderr);
-  return tok_mk(TT_EOF, cv_mk(1, lex->cur), lex->file);
+  return utoken;
 }
 
 Token get_tok_range(Lexer *lex, TokenType type, size_t size) {
@@ -307,7 +282,8 @@ bool skip_comment(Lexer *lex) {
     lex->cur++;
     if (lex->cur >= lex->limit) {
       lex->valid = 0;
-      Context ctx = get_context(lex->file, start);
+      CharV string = cv_mk(lex->limit - start, start);
+      Context ctx = ctx_mk_token(tok_mk(0, string, lex->file));
       ctx_write_position(ctx, stderr);
       fprintf(stderr, "%s\n", "error: endless comment");
       ctx_write_line_view(ctx, stderr);
@@ -321,22 +297,20 @@ bool skip_comment(Lexer *lex) {
   return true;
 }
 
-Context get_context(const FileData *file, const char *pointer) {
-  Context ctx;
-  ctx.file = file;
-  ctx.line = 0;
-  ctx.col = 0;
-  ctx.line_view = (CharV) CV_NTS("context was missed!");
-  CharV text = ca_view(file->content);
-  size_t col = 1;
-  size_t line = 1;
-  const char *line_start = text.at;
+Context ctx_mk_token(Token token) {
+  Context ctx = (Context) {
+    .file = token.file,
+    .line = 1,
+    .col = 1,
+    .range = token.value,
+    .line_view = (CharV) CV_NTS("context not found!")
+  };
+  CharV text = ca_view(token.file->content);
+  const char *line_ptr = text.at;
   for (size_t i = 0; i < text.size; i++) {
-    if (&text.at[i] == pointer) {
-      ctx.line = line;
-      ctx.col = col;
-      size_t line_size = line_start - text.at;
-      CharV string = cv_mk(text.size - line_size, line_start);
+    if (text.at + i == token.value.at) {
+      size_t end_size = line_ptr - text.at;
+      CharV string = cv_mk(text.size - end_size, line_ptr);
       const char *line_sep = cv_chr(string, '\n');
       if (line_sep != NULL) {
         string = cv_mk(line_sep - string.at, string.at);
@@ -345,12 +319,12 @@ Context get_context(const FileData *file, const char *pointer) {
       return ctx;
     }
     if (text.at[i] == '\n') {
-      col = 1;
-      line++;
-      line_start = &text.at[i + 1];
+      ctx.col = 1;
+      ctx.line++;
+      line_ptr = text.at + i + 1;
     }
     else if (text.at[i] != '\r') {
-      col++;
+      ctx.col++;
     }
   }
   return ctx;
@@ -362,12 +336,19 @@ void ctx_write_position(Context ctx, FILE *stream) {
 }
 
 void ctx_write_line_view(Context ctx, FILE *stream) {
+  fprintf(stream, "%4i | ", ctx.line);
   cv_write(ctx.line_view, stream);
-  fputc('\n', stream);
+  fprintf(stream, "\n     | ");
   for (size_t i = 1; i < ctx.col; i++) {
     fputc(' ', stream);
   }
   fputc('^', stream);
+  size_t lim = ctx.line_view.size + ctx.line_view.at - ctx.range.at;
+  lim--; /* '\n' not counts */
+  lim = (lim < ctx.range.size) ? lim : ctx.range.size;
+  for (size_t i = 1; i < lim; i++) {
+    fputc('~', stream);
+  }
   fputc('\n', stream);
 }
 
@@ -395,10 +376,13 @@ Token get_quoted(Lexer *lex, TokenType type) {
   for (bool esc = 0; ; ) {
     lex->cur++;
     if (lex->cur >= lex->limit) {
-      Context ctx = get_context(lex->file, start);
+      CharV string = cv_mk(lex->limit - start, start);
+      Context ctx = ctx_mk_token(tok_mk(0, string, lex->file));
       ctx_write_position(ctx, stderr);
       fprintf(stderr, "%s%c\n", "error: missing quote ", quote);
       ctx_write_line_view(ctx, stderr);
+      lex->valid = 0;
+      return tok_mk(0, (CharV) CV_NTS(""), lex->file);
     }
     if (!esc) {
       if (*lex->cur == quote) {

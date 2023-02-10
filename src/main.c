@@ -33,9 +33,6 @@ int main(int argc, char **argv) {
       ckc_delete(ckc);
       return 1;
     }
-    fprintf(stdout, "%s", "file: ");
-    cv_write(ca_view(fd.path), stdout);
-    fprintf(stdout, "\n%s\n", "tokens:");
     TokenL tokens = tl_new_lex(&fd);
     if (!tokens.valid) {
       fd_delete(fd);

@@ -35,8 +35,6 @@ typedef enum TokenType {
   TT_EQ,
   /* keywords */
   TT_AND,
-  TT_BYTE,
-  TT_CHAR,
   TT_DEFINE,
   TT_ELSE,
   TT_END,
@@ -48,8 +46,6 @@ typedef enum TokenType {
   TT_OR,
   TT_PTR,
   TT_RET,
-  TT_VOID,
-  TT_UINT,
   TT_UNDEF,
   TT_WHILE,
 } TokenType;
@@ -84,6 +80,14 @@ typedef struct TokenV {
   size_t size;
   const Token *at;
 } TokenV;
+
+typedef struct Context {
+  size_t line;
+  size_t col;
+  const FileData *file;
+  CharV line_view;
+  CharV range;
+} Context;
 
 Token tok_mk(
   TokenType type,
@@ -138,5 +142,21 @@ TokenV tv_mk(
   const Token *pointer
 );
 /* returns a view of tokens */
+
+Context ctx_mk_token(
+  Token token
+);
+/* returns context of the token */
+
+void ctx_write_position(
+  Context ctx,
+  FILE *stream
+);
+
+void ctx_write_line_view(
+  Context ctx,
+  FILE *stream
+);
+
 
 #endif /* !LEX_H */
