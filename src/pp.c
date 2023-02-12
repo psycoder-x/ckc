@@ -36,6 +36,11 @@ static bool cf_read(Prexer *pre, CharV file, CharV local);
 static void fdl_add(FileDataL *list, FileData file);
 static bool pp_global_next(Prexer *pre);
 static bool pp_include(Prexer *pre);
+static bool pp_ifdef(Prexer *pre, bool sample);
+static bool pp_ignore(Prexer *pre, Token root);
+static bool pp_define(Prexer *pre);
+static bool pp_undef(Prexer *pre);
+static bool pp_try_macro(Prexer *pre);
 
 CodeFile cf_new(CharV file, CharV local, CharVV idirs) {
   /* prepare */
@@ -169,6 +174,18 @@ void fdl_add(FileDataL *list, FileData file) {
 bool pp_global_next(Prexer *pre) {
   switch (pre->cur->type) {
   case TT_INCLUDE: return pp_include(pre);
+  case TT_IFDEF: return pp_ifdef(pre, true);
+  case TT_IFNDEF: return pp_ifdef(pre, false);
+  case TT_DEFINE: return pp_define(pre);
+  case TT_UNDEF: return pp_undef(pre);
+  case TT_END: {
+    Context ctx = ctx_mk_token(*pre->cur);
+    ctx_write_position(ctx, stderr);
+    fprintf(stderr, "error: unexpected 'end'\n");
+    ctx_write_line_view(ctx, stderr);
+    return false;
+  };
+  case TT_ID: return pp_try_macro(pre);
   default: break;
   }
   *pre->toks = tl_add(*pre->toks, *pre->cur);
@@ -204,4 +221,77 @@ bool pp_include(Prexer *pre) {
   }
   pre->cur++;
   return true;
+}
+
+bool pp_ifdef(Prexer *pre, bool sample) {
+  pre->cur++;
+  if (pre->cur >= pre->end) {
+    Context ctx = ctx_mk_token(*(pre->cur - 1));
+    ctx_write_position(ctx, stderr);
+    fprintf(stderr, "error: identifier expected, got nothing\n");
+    ctx_write_line_view(ctx, stderr);
+    return false;
+  }
+  if (pre->cur->type != TT_ID) {
+    Context ctx = ctx_mk_token(*pre->cur);
+    ctx_write_position(ctx, stderr);
+    fprintf(stderr, 
+      "error: identifier expected, got not an identifier\n");
+    ctx_write_line_view(ctx, stderr);
+    return false;
+  }
+  CharV macro_name = pre->cur->value;
+  (void)macro_name;
+  bool defined = !sample; /* TODO: pp_find_def() != -1 */
+  if (defined != sample) {
+    return pp_ignore(pre, *(pre->cur - 1));
+  }
+  fprintf(stderr, "error: true-branch is not implemented yet\n");
+  return false; /* TODO: implement true-branch */
+}
+
+bool pp_ignore(Prexer *pre, Token root) {
+  size_t end_need = 1;
+  while (pre->cur < pre->end && end_need != 0) {
+    if (pre->cur->type == TT_END) {
+      end_need--;
+    }
+    else if (pre->cur->type == TT_IFDEF
+      || pre->cur->type == TT_IFNDEF
+      || pre->cur->type == TT_DEFINE) {
+      end_need++;
+    }
+    pre->cur++;
+  }
+  if (end_need != 0) {
+    Context ctx = ctx_mk_token(root);
+    ctx_write_position(ctx, stderr);
+    fprintf(stderr, "error: unterminated block\n");
+    ctx_write_line_view(ctx, stderr);
+    return false;
+  }
+  return true;
+}
+
+bool pp_define(Prexer *pre) {
+  Context ctx = ctx_mk_token(*pre->cur);
+  ctx_write_position(ctx, stderr);
+  fprintf(stderr, "error: 'define' is not implemented yet\n");
+  ctx_write_line_view(ctx, stderr);
+  return false; /* TODO: implement define */
+}
+
+bool pp_undef(Prexer *pre) {
+  Context ctx = ctx_mk_token(*pre->cur);
+  ctx_write_position(ctx, stderr);
+  fprintf(stderr, "error: 'undef' is not implemented yet\n");
+  ctx_write_line_view(ctx, stderr);
+  return false; /* TODO: implement undef */
+}
+
+bool pp_try_macro(Prexer *pre) {
+  /* if fail: */
+  *pre->toks = tl_add(*pre->toks, *pre->cur);
+  pre->cur++;
+  return pre->toks->valid;
 }
