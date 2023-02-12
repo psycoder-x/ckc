@@ -41,4 +41,14 @@ void fd_delete(
 );
 /* frees the memory used by <file> */
 
-#endif /* !FILE_H */
+CharV path_name(
+  CharV path
+);
+/* returns name of the file  */
+
+CharV path_dir(
+  CharV path
+);
+/* returns the directory where the file is located */
+
+#endif /* FILE_H */

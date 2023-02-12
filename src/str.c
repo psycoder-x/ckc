@@ -17,6 +17,21 @@ void mem_copy(char *UNIQ dst, const char *UNIQ src, size_t count) {
   }
 }
 
+bool c_isspace(char character) {
+  return character == '\n' || character == '\t' || character == '\0'
+      || character == '\v' || character == '\r' || character == ' ';
+}
+
+bool c_isalpha(char character) {
+  return ('A' <= character && character <= 'Z')
+      || ('a' <= character && character <= 'z')
+      || (unsigned char)character > 127;
+}
+
+bool c_isdigit(char character) {
+  return '0' <= character && character <= '9';
+}
+
 size_t nts_chr(const char *string, char character) {
   const char *begin = string;
   while (*string != '\0' && *string != character) {

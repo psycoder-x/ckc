@@ -54,4 +54,4 @@ CharV ckc_help();
 CharV ckc_version();
 /* returns a char view of the version information */
 
-#endif /* !CKC_H */
+#endif /* CKC_H */

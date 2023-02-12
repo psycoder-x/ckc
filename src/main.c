@@ -2,6 +2,7 @@
 #include "str.h"
 #include "file.h"
 #include "lex.h"
+#include "pp.h"
 #include "stdio.h"
 
 int main(int argc, char **argv) {
@@ -24,29 +25,23 @@ int main(int argc, char **argv) {
     ckc_delete(ckc);
     return 0;
   }
-  /* test */
-  CharV local = (CharV) CV_NTS("./");
+  CharV compiler_dir = path_dir(args.at[0]);
   CharVV idirs = cvv_mk(ckc.idirs.size, ckc.idirs.at);
   for (size_t i = 0; i < ckc.ifiles.size; i++) {
-    FileData fd = fd_new(ckc.ifiles.at[i], local, idirs);
-    if (!fd.valid) {
+    CodeFile file = cf_new(ckc.ifiles.at[i], compiler_dir, idirs);
+    if (!file.valid) {
       ckc_delete(ckc);
       return 1;
     }
-    TokenL tokens = tl_new_lex(&fd);
-    if (!tokens.valid) {
-      fd_delete(fd);
-      ckc_delete(ckc);
-      return 1;
-    }
-    for (size_t t = 0; t < tokens.size; t++) {
-      fprintf(stdout, "%2i | ", tokens.at[t].type);
-      cv_write(tokens.at[t].value, stdout);
+    /* test */
+    for (size_t t = 0; t < file.tokens.size; t++) {
+      fprintf(stdout, "%2i | ", file.tokens.at[t].type);
+      cv_write(file.tokens.at[t].value, stdout);
       fputc('\n', stdout);
     }
-    fd_delete(fd);
+    /* end test */
+    cf_delete(file);
   }
-  /* end test */
   ckc_delete(ckc);
   return 0;
 }

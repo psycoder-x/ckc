@@ -106,7 +106,7 @@ Ckc ckc_new_args(CharVV args) {
     .idirs = cva_new(0)
   };
   foreach_argument(&ckc, args, count_arg);
-  if (ckc.ifiles.size == 0) {
+  if (ckc.ifiles.size == 0 && !ckc.help && !ckc.version) {
     fprintf(stderr, "%s\n", "error: no input files");
     ckc.valid = 0;
     return ckc;

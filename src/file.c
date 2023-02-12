@@ -8,16 +8,6 @@ static CharA path_cat(
   CharV name
 );
 
-static CharV path_name(
-  CharV path
-);
-/* returns name of the file  */
-
-static CharV path_dir(
-  CharV path
-);
-/* returns the directory where the file is located */
-
 static const char *path_last_sep(
   CharV path
 );

@@ -1,0 +1,6 @@
+ifndef STD_DEF_HK
+define STD_DEF_HK 1 end
+
+define NULL 0 end
+
+end /: STD_DEF_HK :/

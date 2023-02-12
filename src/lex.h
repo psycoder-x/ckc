@@ -53,10 +53,8 @@ typedef enum TokenType {
 typedef struct Token {
   TokenType type;
   /* meaning of the token */
-
   CharV value;
   /* string representation of the token */
-
   const FileData *file;
   /* the token is a part of this file */
 } Token;
@@ -64,13 +62,10 @@ typedef struct Token {
 typedef struct TokenL {
   bool valid;
   /* if false, an error was printed and you need to exit */  
-
   size_t size;
   /* number of tokens */
-
   size_t capacity;
   /* allocated memory */
-
   Token *at;
   /* array of tokens */
 } TokenL;
@@ -131,6 +126,11 @@ TokenV tl_view(
 );
 /* returns a view of the list */
 
+TokenL tl_shrink_to_fit(
+  TokenL list
+);
+/* requests the list to reduce its capacity to fit its size. */
+
 void tl_delete(
   TokenL list
   /* list returned from a "new" function */
@@ -158,5 +158,4 @@ void ctx_write_line_view(
   FILE *stream
 );
 
-
-#endif /* !LEX_H */
+#endif /* LEX_H */

@@ -14,7 +14,8 @@ OBJ_LIST = \
 	${OBJ}/str.o \
 	${OBJ}/ckc.o \
 	${OBJ}/file.o \
-	${OBJ}/lex.o
+	${OBJ}/lex.o \
+	${OBJ}/pp.o
 
 EXEC = ${BIN}/ckc
 

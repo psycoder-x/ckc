@@ -1,6 +1,7 @@
-include "io.h"
+include "std/io.hk"
 /: Hello, World! program :/
-Uint(Uint argc, ptr Str argv) main {
-  cv_write("Hello, World!\n", stdout);
+(Uint argc, ptr Str argv) Uint
+main {
+  cv_write("Hello, World!\n", OUT);
   ret 0;
 }

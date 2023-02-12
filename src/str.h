@@ -45,6 +45,18 @@ typedef struct CharVA {
 } CharVA;
 /* array of view of chars */
 
+bool c_isspace(
+  char character
+);
+
+bool c_isalpha(
+  char character
+);
+
+bool c_isdigit(
+  char character
+);
+
 void mem_copy(
   char *dst,
   const char *src,
@@ -187,4 +199,4 @@ void cva_delete(
 );
 /* frees the memory used by <array> */
 
-#endif /* !STR_H */
+#endif /* STR_H */

@@ -7,7 +7,7 @@ typedef struct Lexer {
   bool valid;
   const FileData *file;
   const char *cur;
-  const char *limit;
+  const char *end;
 } Lexer;
 
 typedef struct Keyword {
@@ -51,18 +51,6 @@ static Token get_tok_range(
   Lexer *lex,
   TokenType type,
   size_t size
-);
-
-static bool is_space(
-  char ch
-);
-
-static bool is_alpha(
-  char ch
-);
-
-static bool is_digit(
-  char ch
 );
 
 static bool is_id(
@@ -110,24 +98,22 @@ TokenL tl_new_lex(const FileData *file) {
     .valid = 1,
     .file = file,
     .cur = file->content.at,
-    .limit = file->content.at + file->content.size
+    .end = file->content.at + file->content.size
   };
   TokenL list = tl_new();
-  if (!list.valid) {
-    return list;
-  }
-  for (;;) {
+  while (list.valid) {
     Token token = get_token(&lex);
     if (!lex.valid) {
       tl_delete(list);
       list.valid = 0;
       return list;
     }
-    list = tl_add(list, token);
-    if (token.type == TT_EOF || !list.valid) {
-      return list;
+    if (token.type == TT_EOF) {
+      break;
     }
+    list = tl_add(list, token);
   }
+  return list;
 }
 
 TokenL tl_add(TokenL list, Token token) {
@@ -163,6 +149,16 @@ TokenV tl_view(TokenL list) {
     return tv_mk(0, NULL);
   }
   return tv_mk(list.size, list.at);
+}
+
+TokenL tl_shrink_to_fit(TokenL list) {
+  Token *new_ptr = realloc(list.at, list.size * sizeof(Token));
+  if (new_ptr == NULL) {
+    return list;
+  }
+  list.at = new_ptr;
+  list.capacity = list.size;
+  return list;
 }
 
 void tl_delete(TokenL list) {
@@ -208,11 +204,11 @@ void tok_rcopy(Token *dst, const Token *src, size_t count) {
 
 Token get_token(Lexer *lex) {
   /* skip space */
-  while (lex->cur < lex->limit && is_space(*lex->cur)) {
+  while (lex->cur < lex->end && c_isspace(*lex->cur)) {
     lex->cur++;
   }
   /* no chars left? */
-  if (lex->cur >= lex->limit) {
+  if (lex->cur >= lex->end) {
     return tok_mk(TT_EOF, cv_mk(0, lex->cur), lex->file);
   }
   /* match */
@@ -254,10 +250,10 @@ Token get_token(Lexer *lex) {
   case '\'': return get_quoted(lex, TT_CHAR_LIT);
   case '\"': return get_quoted(lex, TT_STR_LIT);
   default:
-    if (is_alpha(*lex->cur) || *lex->cur == '_') {
+    if (c_isalpha(*lex->cur) || *lex->cur == '_') {
       return get_alnum(lex, TT_ID);
     }
-    if (is_digit(*lex->cur)) {
+    if (c_isdigit(*lex->cur)) {
       return get_alnum(lex, TT_INT_LIT);
     }
   }
@@ -280,9 +276,9 @@ bool skip_comment(Lexer *lex) {
   const char *start = lex->cur;
   for (char before = '/'; ; before = *lex->cur) {
     lex->cur++;
-    if (lex->cur >= lex->limit) {
+    if (lex->cur >= lex->end) {
       lex->valid = 0;
-      CharV string = cv_mk(lex->limit - start, start);
+      CharV string = cv_mk(lex->end - start, start);
       Context ctx = ctx_mk_token(tok_mk(0, string, lex->file));
       ctx_write_position(ctx, stderr);
       fprintf(stderr, "%s\n", "error: endless comment");
@@ -354,7 +350,7 @@ void ctx_write_line_view(Context ctx, FILE *stream) {
 
 Token get_alnum(Lexer *lex, TokenType type) {
   const char *start = lex->cur;
-  while (lex->cur < lex->limit && is_id(*lex->cur)) {
+  while (lex->cur < lex->end && is_id(*lex->cur)) {
     lex->cur++;
   }
   CharV value = cv_mk(lex->cur - start, start);
@@ -375,8 +371,8 @@ Token get_quoted(Lexer *lex, TokenType type) {
   char quote = *lex->cur;
   for (bool esc = 0; ; ) {
     lex->cur++;
-    if (lex->cur >= lex->limit) {
-      CharV string = cv_mk(lex->limit - start, start);
+    if (lex->cur >= lex->end) {
+      CharV string = cv_mk(lex->end - start, start);
       Context ctx = ctx_mk_token(tok_mk(0, string, lex->file));
       ctx_write_position(ctx, stderr);
       fprintf(stderr, "%s%c\n", "error: missing quote ", quote);
@@ -401,20 +397,6 @@ Token get_quoted(Lexer *lex, TokenType type) {
   return tok_mk(type, value, lex->file);
 }
 
-bool is_space(char ch) {
-  return ch == ' ' || ch == '\t' || ch == '\0'
-    || ch == '\v' || ch == '\n' || ch == '\r';
-}
-
-bool is_alpha(char ch) {
-  return ('A' <= ch && ch <= 'Z') || ('a' <= ch && ch <= 'z')
-    || (unsigned char)ch > 127;
-}
-
-bool is_digit(char ch) {
-  return '0' <= ch && ch <= '9';
-}
-
 bool is_id(char ch) {
-  return is_digit(ch) || is_alpha(ch) || ch == '_';
+  return c_isdigit(ch) || c_isalpha(ch) || ch == '_';
 }
