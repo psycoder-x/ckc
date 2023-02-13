@@ -1,3 +1,4 @@
+_error_ "something works!"
 include "std/io.hk"
 /: Hello, World! program :/
 (Uint argc, ptr Str argv) Uint

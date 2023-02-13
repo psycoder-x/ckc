@@ -37,6 +37,7 @@ typedef enum TokenType {
   TT_AND,
   TT_DEFINE,
   TT_ELSE,
+  TT_ERROR,
   TT_END,
   TT_IF,
   TT_IFDEF,

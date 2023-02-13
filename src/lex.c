@@ -16,6 +16,7 @@ typedef struct Keyword {
 } Keyword;
 
 static const Keyword keywords[] = {
+  { .string = CV_NTS("_error_"), .type = TT_ERROR },
   { .string = CV_NTS("and"), .type = TT_AND },
   { .string = CV_NTS("define"), .type = TT_DEFINE },
   { .string = CV_NTS("else"), .type = TT_ELSE },

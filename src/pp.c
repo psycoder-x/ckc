@@ -34,13 +34,15 @@ static void fdl_delete(FileDataL list);
 static FileDataL fdl_shrink_to_fit(FileDataL list);
 static bool cf_read(Prexer *pre, CharV file, CharV local);
 static void fdl_add(FileDataL *list, FileData file);
-static bool pp_global_next(Prexer *pre);
 static bool pp_include(Prexer *pre);
 static bool pp_ifdef(Prexer *pre, bool sample);
 static bool pp_ignore(Prexer *pre, Token root);
 static bool pp_define(Prexer *pre);
 static bool pp_undef(Prexer *pre);
 static bool pp_try_macro(Prexer *pre);
+static bool pp_end(Prexer *pre, bool expected);
+static bool pp_block(Prexer *pre, bool toend);
+static bool pp_error(Prexer *pre);
 
 CodeFile cf_new(CharV file, CharV local, CharVV idirs) {
   /* prepare */
@@ -146,12 +148,7 @@ bool cf_read(Prexer *pre, CharV file, CharV local) {
   pre->parent = &source;
   pre->cur = tokens.at;
   pre->end = tokens.at + tokens.size;
-  while (pre->cur < pre->end) {
-    if (!pp_global_next(pre)) {
-      return false;
-    }
-  }
-  return true;
+  return pp_block(pre, false);
 }
 
 void fdl_add(FileDataL *list, FileData file) {
@@ -171,26 +168,48 @@ void fdl_add(FileDataL *list, FileData file) {
   list->size++;
 }
 
-bool pp_global_next(Prexer *pre) {
-  switch (pre->cur->type) {
-  case TT_INCLUDE: return pp_include(pre);
-  case TT_IFDEF: return pp_ifdef(pre, true);
-  case TT_IFNDEF: return pp_ifdef(pre, false);
-  case TT_DEFINE: return pp_define(pre);
-  case TT_UNDEF: return pp_undef(pre);
-  case TT_END: {
+bool pp_block(Prexer *pre, bool toend) {
+  bool ok = true;
+  while (ok && pre->cur < pre->end) {
+    switch (pre->cur->type) {
+    case TT_ID:       ok = pp_try_macro(pre); break;
+    case TT_INCLUDE:  ok = pp_include(pre); break;
+    case TT_IFDEF:    ok = pp_ifdef(pre, true); break;
+    case TT_IFNDEF:   ok = pp_ifdef(pre, false); break;
+    case TT_DEFINE:   ok = pp_define(pre); break;
+    case TT_UNDEF:    ok = pp_undef(pre); break;
+    case TT_ERROR:    ok = pp_error(pre); break;
+    case TT_END:      return pp_end(pre, toend);
+    default:
+      *pre->toks = tl_add(*pre->toks, *pre->cur);
+      pre->cur++;
+      ok = pre->toks->valid;
+      break;
+    }
+  }
+  return ok;
+}
+
+bool pp_error(Prexer *pre) {
+  /* always invalid */
+  Context ctx = ctx_mk_token(*pre->cur);
+  ctx_write_position(ctx, stderr);
+  fprintf(stderr, "error: ");
+  cv_write(ctx.line_view, stderr);
+  fputc('\n', stderr);
+  ctx_write_line_view(ctx, stderr);
+  return false;
+}
+
+bool pp_end(Prexer *pre, bool expected) {
+  if (!expected) {
     Context ctx = ctx_mk_token(*pre->cur);
     ctx_write_position(ctx, stderr);
     fprintf(stderr, "error: unexpected 'end'\n");
     ctx_write_line_view(ctx, stderr);
-    return false;
-  };
-  case TT_ID: return pp_try_macro(pre);
-  default: break;
   }
-  *pre->toks = tl_add(*pre->toks, *pre->cur);
   pre->cur++;
-  return pre->toks->valid;
+  return expected;
 }
 
 bool pp_include(Prexer *pre) {
@@ -241,13 +260,15 @@ bool pp_ifdef(Prexer *pre, bool sample) {
     return false;
   }
   CharV macro_name = pre->cur->value;
+  pre->cur++;
   (void)macro_name;
-  bool defined = !sample; /* TODO: pp_find_def() != -1 */
+  bool defined = sample; /* TODO: pp_find_def() != -1 */
   if (defined != sample) {
     return pp_ignore(pre, *(pre->cur - 1));
   }
-  fprintf(stderr, "error: true-branch is not implemented yet\n");
-  return false; /* TODO: implement true-branch */
+  else {
+    return pp_block(pre, true);
+  }
 }
 
 bool pp_ignore(Prexer *pre, Token root) {
