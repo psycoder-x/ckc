@@ -3,13 +3,15 @@ define STD_IO_HK 1 end
 
 include "def.hk"
 
-ptr Void OUT;
-ptr Void IN;
+define Stream ptr Void end
 
-(Str string, ptr Void stream) Void cv_write;
+Stream OUT;
+Stream IN;
+
+(Str string, Stream stream) Void cv_write;
 /: write characters to stream :/
 
-(ptr Void stream) Char c_get;
+(Stream stream) Char c_get;
 /: read single character from stream :/
 
 end /: STD_IO_HK :/

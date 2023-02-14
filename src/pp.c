@@ -3,6 +3,27 @@
 #include "stdlib.h"
 
 #define FDL_CAP 3
+#define ML_CAP 2
+
+typedef struct Macro {
+  Token name;
+  /* identifier */
+  TokenA value;
+  /* tokens defined by name */
+} Macro;
+/* defined macro */
+
+typedef struct MacroL {
+  bool valid;
+  /* if false, an error was printed and you need to exit */  
+  size_t size;
+  /* number of defines */
+  size_t capacity;
+  /* allocated memory */
+  Macro *at;
+  /* array of macros */
+} MacroL;
+/* list of macros */
 
 typedef struct FileDataL {
   bool valid;
@@ -20,6 +41,7 @@ typedef struct Prexer {
   bool valid;
   TokenL *toks;
   FileDataL *srcs;
+  MacroL *mcrs;
   CharVV *idirs;
   const FileData *parent;
   const Token *cur;
@@ -44,28 +66,41 @@ static bool pp_end(Prexer *pre, bool expected);
 static bool pp_block(Prexer *pre, bool toend);
 static bool pp_error(Prexer *pre);
 
+static Macro m_new(Token name, TokenL list);
+static void m_delete(Macro macro);
+static MacroL ml_new();
+static void ml_delete(MacroL list);
+static void ml_add(MacroL *list, Macro macro);
+static size_t ml_find(MacroL *list, CharV name);
+static void ml_remove(MacroL *list, size_t i);
+
 CodeFile cf_new(CharV file, CharV local, CharVV idirs) {
   /* prepare */
   TokenL tokens = tl_new();
   FileDataL sources = fdl_new();
+  MacroL macros = ml_new();
   Prexer prexer = (Prexer) {
     .valid = 1,
     .toks = &tokens,
     .srcs = &sources,
+    .mcrs = &macros,
     .idirs = &idirs
   };
-  if (!tokens.valid || !sources.valid) {
+  if (!tokens.valid || !sources.valid || !macros.valid) {
     tl_delete(tokens);
     fdl_delete(sources);
+    ml_delete(macros);
     return (CodeFile) { .valid = 0 };
   }
   /* preprocess */
   if (!cf_read(&prexer, file, local)) {
     tl_delete(tokens);
     fdl_delete(sources);
+    ml_delete(macros);
     return (CodeFile) { .valid = 0 };
   }
   /* construct the result */
+  ml_delete(macros);
   tokens = tl_shrink_to_fit(tokens);
   sources = fdl_shrink_to_fit(sources);
   CodeFile code_file = (CodeFile) {
@@ -148,7 +183,9 @@ bool cf_read(Prexer *pre, CharV file, CharV local) {
   pre->parent = &source;
   pre->cur = tokens.at;
   pre->end = tokens.at + tokens.size;
-  return pp_block(pre, false);
+  bool ok = pp_block(pre, false);
+  tl_delete(tokens);
+  return ok;
 }
 
 void fdl_add(FileDataL *list, FileData file) {
@@ -261,8 +298,7 @@ bool pp_ifdef(Prexer *pre, bool sample) {
   }
   CharV macro_name = pre->cur->value;
   pre->cur++;
-  (void)macro_name;
-  bool defined = sample; /* TODO: pp_find_def() != -1 */
+  bool defined = (ml_find(pre->mcrs, macro_name) < pre->mcrs->size);
   if (defined != sample) {
     return pp_ignore(pre, *(pre->cur - 1));
   }
@@ -295,24 +331,179 @@ bool pp_ignore(Prexer *pre, Token root) {
 }
 
 bool pp_define(Prexer *pre) {
-  Context ctx = ctx_mk_token(*pre->cur);
-  ctx_write_position(ctx, stderr);
-  fprintf(stderr, "error: 'define' is not implemented yet\n");
-  ctx_write_line_view(ctx, stderr);
-  return false; /* TODO: implement define */
+  pre->cur++;
+  if (pre->cur >= pre->end) {
+    Context ctx = ctx_mk_token(*(pre->cur - 1));
+    ctx_write_position(ctx, stderr);
+    fprintf(stderr, "error: identifier expected, got nothing\n");
+    ctx_write_line_view(ctx, stderr);
+    return false;
+  }
+  if (pre->cur->type != TT_ID) {
+    Context ctx = ctx_mk_token(*pre->cur);
+    ctx_write_position(ctx, stderr);
+    fprintf(stderr, 
+      "error: identifier expected, got not an identifier\n");
+    ctx_write_line_view(ctx, stderr);
+    return false;
+  }
+  Token name = *pre->cur;
+  size_t i = ml_find(pre->mcrs, name.value);
+  /* redefinition */
+  if (i < pre->mcrs->size) {
+    Context ctx = ctx_mk_token(*pre->cur);
+    ctx_write_position(ctx, stderr);
+    fprintf(stderr, "error: \"");
+    cv_write(name.value, stderr);
+    fprintf(stderr, "\" redefined\n");
+    ctx_write_line_view(ctx, stderr);
+    Context ctx_note = ctx_mk_token(pre->mcrs->at[i].name);
+    ctx_write_position(ctx_note, stderr);
+    fprintf(stderr,
+      "note: this is the location of the previous definition\n");
+    ctx_write_line_view(ctx_note, stderr);
+    return false;
+  }
+  /* definition */
+  cv_write(name.value, stdout);
+  fputc('\n', stdout);
+  TokenL value = tl_new();
+  if (!value.valid) {
+    return false;
+  }
+  pre->cur++;
+  Prexer sub_pre = *pre;
+  sub_pre.toks = &value;
+  if (!pp_block(&sub_pre, true)) {
+    tl_delete(value);
+    return false;
+  }
+  Macro macro = m_new(name, value);
+  ml_add(pre->mcrs, macro);
+  pre->cur = sub_pre.cur;
+  return pre->mcrs->valid;
 }
 
 bool pp_undef(Prexer *pre) {
-  Context ctx = ctx_mk_token(*pre->cur);
-  ctx_write_position(ctx, stderr);
-  fprintf(stderr, "error: 'undef' is not implemented yet\n");
-  ctx_write_line_view(ctx, stderr);
-  return false; /* TODO: implement undef */
+  pre->cur++;
+  if (pre->cur >= pre->end) {
+    Context ctx = ctx_mk_token(*(pre->cur - 1));
+    ctx_write_position(ctx, stderr);
+    fprintf(stderr, "error: identifier expected, got nothing\n");
+    ctx_write_line_view(ctx, stderr);
+    return false;
+  }
+  if (pre->cur->type != TT_ID) {
+    Context ctx = ctx_mk_token(*pre->cur);
+    ctx_write_position(ctx, stderr);
+    fprintf(stderr, 
+      "error: identifier expected, got not an identifier\n");
+    ctx_write_line_view(ctx, stderr);
+    return false;
+  }
+  size_t i = ml_find(pre->mcrs, pre->cur->value);
+  pre->cur++;
+  if (i < pre->mcrs->size) {
+    ml_remove(pre->mcrs, i);
+  }
+  return pre->mcrs->valid;
 }
 
 bool pp_try_macro(Prexer *pre) {
+  size_t i = ml_find(pre->mcrs, pre->cur->value);
   /* if fail: */
-  *pre->toks = tl_add(*pre->toks, *pre->cur);
+  if (i >= pre->mcrs->size) {
+    *pre->toks = tl_add(*pre->toks, *pre->cur);
+    pre->cur++;
+    return pre->toks->valid;
+  }
+  Macro macro = pre->mcrs->at[i];
+  *pre->toks = tl_add_range(*pre->toks, ta_view(macro.value));
   pre->cur++;
   return pre->toks->valid;
 }
+
+Macro m_new(Token name, TokenL list) {
+  tl_shrink_to_fit(list);
+  Macro macro = (Macro) {
+    .value = (TokenA) {
+      .at = list.at,
+      .size = list.size,
+      .valid = 1
+    },
+    .name = name
+  };
+  return macro;
+}
+
+void m_delete(Macro macro) {
+  ta_delete(macro.value);
+}
+
+MacroL ml_new() {
+  MacroL list = (MacroL) {
+    .size = 0,
+    .capacity = ML_CAP,
+    .at = calloc(ML_CAP, sizeof(Macro))
+  };
+  list.valid = (list.at != NULL);
+  return list;
+}
+
+void ml_delete(MacroL list) {
+  if (list.valid) {
+    for (size_t i = 0; i < list.size; i++) {
+      m_delete(list.at[i]);
+    }
+    free(list.at);
+  }
+}
+
+void ml_add(MacroL *list, Macro macro) {
+  if (list->size == list->capacity) {
+    size_t cap = list->capacity = list->size + 10;
+    Macro *new_ptr = realloc(list->at, cap * sizeof(Macro));
+    if (new_ptr == NULL) {
+      fprintf(stderr, "%s%s\n", 
+        __func__, ": fail to reallocate memory");
+      ml_delete(*list);
+      m_delete(macro);
+      list->valid = 0;
+      return;
+    }
+  }
+  list->at[list->size] = macro;
+  list->size++;
+}
+
+size_t ml_find(MacroL *list, CharV name) {
+  for (size_t i = 0; i < list->size; i++) {
+    if (cv_eq(list->at[i].name.value, name)) {
+      return i;
+    }
+  }
+  return list->size;
+}
+
+void ml_remove(MacroL *list, size_t i) {
+  if (i >= list->size) {
+    ml_delete(*list);
+    fprintf(stderr, "%s%s%i%s\n", 
+        __func__, ": index ", i, " is out of range");
+    list->valid = 0;
+    return;
+  }
+  m_delete(list->at[i]);
+  for (size_t j = i + 1; j < list->size; j++, i++) {
+    list->at[i] = list->at[j];
+  }
+  list->size--;
+}
+
+TokenV ta_view(TokenA array) {
+  return (TokenV) {
+    .at = array.at,
+    .size = (array.valid) ? array.size : 0
+  };
+}
+

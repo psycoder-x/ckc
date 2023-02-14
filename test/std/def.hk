@@ -2,5 +2,8 @@ ifndef STD_DEF_HK
 define STD_DEF_HK 1 end
 
 define NULL 0 end
-
+/:
+define EXIT_SUCCESS 0 end
+define EXIT_FAILURE 1 end
+:/
 end /: STD_DEF_HK :/

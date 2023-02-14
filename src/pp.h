@@ -34,6 +34,10 @@ typedef struct CodeFile {
 } CodeFile;
 /* file after preprocessing */
 
+TokenV ta_view(
+  TokenA array
+);
+
 CodeFile cf_new(
   CharV file,
   /* file by this name will be preprocessed */
